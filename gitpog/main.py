@@ -6,16 +6,18 @@ from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 from termcolor import colored
 from time import sleep
+import os
 a=0
 deprecation_count=1
-def makerequest(equery):
+def makerequest(word):
     result=[]
     global GITHUB_API_TOKEN
     global language
+    equery=urllib.parse.quote('"'+presult.target+'" '+word.strip('\n'))
     global deprecation_count
     token=GITHUB_API_TOKEN.strip()
     if(deprecation_count%10==0):
-        sleep(10)
+        sleep(15)
     if(language!=None):
         response=requests.get(f'https://api.github.com/search/code?q={equery}+language:{language}',headers={'Authorization':'token '+token})
     else:
@@ -23,13 +25,14 @@ def makerequest(equery):
     if(response.status_code==403):
         print('API search has been blocked by github wait for sometime')
         sleep(10)
+        makerequest(equery)
     if(response.status_code==200):
         for i in response.json()['items']:
             result.append(i['html_url'])
         deprecation_count+=1
     else:
         print(response.text)
-    return (equery,result)
+    return (word,result)
 
 parser=optparse.OptionParser(description='Gitpog is a tool which tries to do github dorking')
 parser.add_option('-d',dest='target',help='Specify the target to dork (either a domain or target keyword)')
@@ -48,7 +51,7 @@ if(presult.token==None):
     print('Needs a github api token to run authenticated search')
     sys.exit()
 if(presult.outputfile!=None):
-    outfile=open(presult.outputfile,'a')
+    os.system('mkdir '+presult.outputfile)
     a=1
     
 
@@ -63,32 +66,32 @@ else:
     wordlist=presult.wordlist
     tpool=ThreadPoolExecutor(max_workers=1)
     f=open(wordlist,'r').readlines()
-    filecontents=[urllib.parse.quote('"'+presult.target+'" '+i.strip('\n')) for i in f]
+    #filecontents=[urllib.parse.quote('"'+presult.target+'" '+i.strip('\n')) for i in f]
     #result=tpool.map(makerequest,filecontents)
-    results=map(lambda x:tpool.submit(makerequest,x),filecontents)
-    '''tpool.join()
-    for f in result:
-        if len(f)!=0:
-            word,links=f
-            print(colored(f'Results for the query {word}','green'))
-            for link in links:
-                print(colored(link,'blue'))
-    '''
-    '''
+#This line makes the github code request
+    results=map(lambda x:tpool.submit(makerequest,x),f)
     for result in concurrent.futures.as_completed(results):
-        query,links=result.result()
+        word,links=result.result()
         if links!=[]:
-            word=urllib.parse.unquote(query).strip(presult.target)
             print(colored(f'Results for the query {word}','green'))
+            if(a==1 and links!=[]):
+                    outfile=open(presult.outputfile+f'/{word}','w')
+                    outfile.write(colored('\nResults for the query '+urllib.parse.unquote(word)+'\n','green'))
+                    outfile.write(colored('\n'.join(links),'blue'))
+
             for link in links:
-                print(colored(link,'blue'))
-    '''    
+                print(colored(link,'blue'))    
+    '''
     for word in filecontents:
             word,links=makerequest(word)
             print(colored('Results for the query ' +urllib.parse.unquote(word),'green'))
-            print(links)
+            if(links==[]):
+                print(colored('No result ','red'))
+            for link in links:
+                print(colored(link,'blue'))
             if(a==1 and links!=[]):
                     outfile.write('Results for the query '+urllib.parse.unquote(word)+'\n')
-                    outfile.write('\n'.join(links))            
+                    outfile.write('\n'.join(links))
+    '''            
 
     
