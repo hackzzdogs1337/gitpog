@@ -8,6 +8,7 @@ from termcolor import colored
 from time import sleep
 import os
 a=0
+filter=0
 deprecation_count=1
 def makerequest(word):
     result=[]
@@ -19,9 +20,9 @@ def makerequest(word):
     if(deprecation_count%10==0):
         sleep(15)
     if(language!=None):
-        response=requests.get(f'https://api.github.com/search/code?q={equery}+language:{language}',headers={'Authorization':'token '+token})
+        response=requests.get(f'https://api.github.com/search/code?q={equery}+language:{language}&per_page=100',headers={'Authorization':'token '+token})
     else:
-        response=requests.get(f'https://api.github.com/search/code?q={equery}',headers={'Authorization':'token '+token})
+        response=requests.get(f'https://api.github.com/search/code?q={equery}&per_page=100',headers={'Authorization':'token '+token})
     if(response.status_code==403):
         print('API search has been blocked by github wait for sometime')
         sleep(10)
@@ -41,6 +42,7 @@ parser.add_option('-l',dest='lang',help='Language to search (like ruby)')
 parser.add_option('-w',dest='wordlist',help='Wordlist containing a list of keywords',default='./wordlists/keywords.txt')
 parser.add_option('-k',dest='keyword',help='Specific keyword u want to search')
 parser.add_option('-o',dest='outputfile',help='Output to a file')
+parser.add_option('-r',dest='repo',help='Target github for better filtering of results')
 #parser result
 
 presult,dummy=parser.parse_args()
@@ -52,8 +54,7 @@ if(presult.token==None):
     sys.exit()
 if(presult.outputfile!=None):
     os.system('mkdir '+presult.outputfile)
-    a=1
-    
+    a=1    
 
 
 GITHUB_API_TOKEN=presult.token
@@ -66,32 +67,28 @@ else:
     wordlist=presult.wordlist
     tpool=ThreadPoolExecutor(max_workers=1)
     f=open(wordlist,'r').readlines()
-    #filecontents=[urllib.parse.quote('"'+presult.target+'" '+i.strip('\n')) for i in f]
-    #result=tpool.map(makerequest,filecontents)
 #This line makes the github code request
     results=map(lambda x:tpool.submit(makerequest,x),f)
     for result in concurrent.futures.as_completed(results):
         word,links=result.result()
+        #Filter results based on repos
+        if presult.repo!=None:
+            filtered_links=[]
+            for link in links:
+                if(presult.repo in link):
+                    filtered_links.append(link)
+            links=filtered_links
+
+        #word=word.strip('\n').strip('=').strip('-')
+        word=word.translate(word.maketrans('&=-\?$\n#','        ')).strip(' ')
         if links!=[]:
-            print(colored(f'Results for the query {word}','green'))
+            print(colored(f'Results for the keyword {word}','green'))
             if(a==1 and links!=[]):
                     outfile=open(presult.outputfile+f'/{word}','w')
                     outfile.write(colored('\nResults for the query '+urllib.parse.unquote(word)+'\n','green'))
                     outfile.write(colored('\n'.join(links),'blue'))
 
             for link in links:
-                print(colored(link,'blue'))    
-    '''
-    for word in filecontents:
-            word,links=makerequest(word)
-            print(colored('Results for the query ' +urllib.parse.unquote(word),'green'))
-            if(links==[]):
-                print(colored('No result ','red'))
-            for link in links:
-                print(colored(link,'blue'))
-            if(a==1 and links!=[]):
-                    outfile.write('Results for the query '+urllib.parse.unquote(word)+'\n')
-                    outfile.write('\n'.join(links))
-    '''            
+                print(colored(link,'blue'))        
 
     
