@@ -1,4 +1,4 @@
-# gitpog
+# gitpog :cowboy_hat_face:	
 Gitpog is a github dorking tool that tries to grab results efficiently by filtering mechanism
 
 ## Usage
