@@ -16,3 +16,6 @@ Options | What for
 -k | Single Keyword which you want to search
 -o | Output directory 
 -r | Filter by target home repo
+
+## Wordlist
+*Default wordlist used here is  random-robbie-keywords.txt* https://github.com/random-robbie/keywords
